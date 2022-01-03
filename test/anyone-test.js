@@ -124,10 +124,10 @@ describe('Renew', function() {
     const {chain} = await nclient.getInfo();
     assert.strictEqual(info.renewal, chain.height);
 
-    // fee we paid is within 10% of default fee rate
+    // fee we paid is within 1% of default fee rate
     const meta = await nclient.getTX(tx.txid());
     const delta = network.feeRate - meta.rate;
     const pct = delta / network.feeRate;
-    assert(pct <= 0.10);
+    assert(pct <= 0.01);
   });
 });

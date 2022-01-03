@@ -2,7 +2,6 @@
 
 'use strict';
 
-const assert = require('assert');
 const {WalletClient, NodeClient} = require('hs-client');
 const Renewer = require('../lib/renewer');
 const Funder = require('../lib/funder');
@@ -18,7 +17,7 @@ Options:
   --passphrase  wallet passphrase (default: none)
   --network     (default: regtest)
   --rate        fee rate in dollarydoos per kB (default: network default)
-  --broadcast   whether or not to broadcast the signed transaction (default: false)
+  --broadcast   whether to broadcast the signed transaction (default: false)
 `;
 
 const argv = process.argv;
@@ -64,6 +63,10 @@ while (argv.length) {
       network = next;
       break;
     }
+    case '--rate': {
+      rate = next;
+      break;
+    }
     case '--broadcast': {
       broadcast = next;
       break;
@@ -96,11 +99,12 @@ const nclient = new NodeClient({
 
 if (verb === 'renew') {
   const renewer = new Renewer({name, network, nclient, wclient});
-  const funder = new Funder({network, nclient, wclient});
+  const funder = new Funder({network, nclient, wclient, rate});
   (async() => {
+    await wclient.execute('selectwallet', [wallet]);
     const mtx = await renewer.getMTX();
-    const tx = await funder.fund(mtx);
-    console.log(tx.getJSON(network, mtx.view));
+    const tx = await funder.fund(mtx, passphrase);
+    console.dir(tx.getJSON(network, mtx.view), {depth: null});
     if (broadcast) {
       await nclient.broadcast(tx.toHex());
     }
