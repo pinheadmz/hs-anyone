@@ -14,14 +14,17 @@ running node and wallet to use this package).
 Usage: $ hs-anyone [command] [name] [options]
 
 Commands:
-  renew         renew an anyone-can-renew name
+  renew         RENEW an anyone-can-renew name
+  finalize      FINALIZE a filled Shakedex (HIP-1) auction TRANSFER
+                (requires local hsd Full Node with --index-tx=true)
 
 Options:
   --wallet      wallet ID (default: primary)
+  --apikey      node / wallet API key (default: none)
   --passphrase  wallet passphrase (default: none)
   --network     (default: regtest)
   --rate        fee rate in dollarydoos per kB (default: network default)
-  --broadcast   whether or not to broadcast the signed transaction (default: false)
+  --broadcast   whether to broadcast the signed transaction (default: false)
 ```
 
 

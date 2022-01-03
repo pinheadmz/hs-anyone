@@ -5,15 +5,19 @@
 const {WalletClient, NodeClient} = require('hs-client');
 const Renewer = require('../lib/renewer');
 const Funder = require('../lib/funder');
+const Finalizer = require('../lib/finalizer');
 
 const HELP = `
 Usage: $ hs-anyone [command] [name] [options]
 
 Commands:
-  renew         renew an anyone-can-renew name
+  renew         RENEW an anyone-can-renew name
+  finalize      FINALIZE a filled Shakedex (HIP-1) auction TRANSFER
+                (requires local hsd Full Node with --index-tx=true)
 
 Options:
   --wallet      wallet ID (default: primary)
+  --apikey      node / wallet API key (default: none)
   --passphrase  wallet passphrase (default: none)
   --network     (default: regtest)
   --rate        fee rate in dollarydoos per kB (default: network default)
@@ -28,6 +32,7 @@ const verb = argv.shift();
 
 switch (verb) {
   case 'renew':
+  case 'finalize':
     break;
   default:
     throw new Error(`Unrecognized command: ${verb}\n${HELP}`);
@@ -40,6 +45,7 @@ if (!name)
 
 let network = 'regtest';
 let wallet = 'primary';
+let apiKey = null;
 let passphrase = null;
 let rate = null;
 let broadcast = false;
@@ -71,6 +77,10 @@ while (argv.length) {
       broadcast = next;
       break;
     }
+    case '--apikey': {
+      apiKey = next;
+      break;
+    }
     default:
       throw new Error(`Unrecognizd option: ${arg}\n${HELP}`);
   }
@@ -90,11 +100,13 @@ switch (network) {
 }
 
 const wclient = new WalletClient({
-  port: walletPort
+  port: walletPort,
+  apiKey
 });
 
 const nclient = new NodeClient({
-  port: rpcPort
+  port: rpcPort,
+  apiKey
 });
 
 if (verb === 'renew') {
@@ -103,6 +115,23 @@ if (verb === 'renew') {
   (async() => {
     await wclient.execute('selectwallet', [wallet]);
     const mtx = await renewer.getMTX();
+    const tx = await funder.fund(mtx, passphrase);
+    console.dir(tx.getJSON(network, mtx.view), {depth: null});
+    if (broadcast) {
+      await nclient.broadcast(tx.toHex());
+    }
+  })().catch((err) => {
+    console.error(err.stack);
+    process.exit(1);
+  });
+}
+
+if (verb === 'finalize') {
+  const finalizer = new Finalizer({name, network, nclient, wclient});
+  const funder = new Funder({network, nclient, wclient, rate});
+  (async() => {
+    await wclient.execute('selectwallet', [wallet]);
+    const mtx = await finalizer.getMTX();
     const tx = await funder.fund(mtx, passphrase);
     console.dir(tx.getJSON(network, mtx.view), {depth: null});
     if (broadcast) {
