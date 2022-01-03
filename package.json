@@ -1,0 +1,23 @@
+{
+  "name": "hs-anyone",
+  "version": "1.0.0",
+  "description": "",
+  "main": "./lib/index.js",
+  "scripts": {
+    "test": "bmocha --reporter spec test/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pinheadmz/hs-anyone.git"
+  },
+  "author": "Matthew Zipkin",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/pinheadmz/hs-anyone/issues"
+  },
+  "homepage": "https://github.com/pinheadmz/hs-anyone#readme",
+  "peerDependencies": {
+    "hs-client": "0.0.10",
+    "hsd": "3.0.1"
+  }
+}

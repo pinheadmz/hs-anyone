@@ -1,0 +1,112 @@
+#!/usr/bin/env node
+
+'use strict';
+
+const assert = require('assert');
+const {WalletClient, NodeClient} = require('hs-client');
+const Renewer = require('../lib/renewer');
+const Funder = require('../lib/funder');
+
+const HELP = `
+Usage: $ hs-anyone [command] [name] [options]
+
+Commands:
+  renew         renew an anyone-can-renew name
+
+Options:
+  --wallet      wallet ID (default: primary)
+  --passphrase  wallet passphrase (default: none)
+  --network     (default: regtest)
+  --rate        fee rate in dollarydoos per kB (default: network default)
+  --broadcast   whether or not to broadcast the signed transaction (default: false)
+`;
+
+const argv = process.argv;
+argv.shift();
+argv.shift();
+
+const verb = argv.shift();
+
+switch (verb) {
+  case 'renew':
+    break;
+  default:
+    throw new Error(`Unrecognized command: ${verb}\n${HELP}`);
+}
+
+const name = argv.shift();
+
+if (!name)
+  throw new Error(`Name is required.\n${HELP}`);
+
+let network = 'regtest';
+let wallet = 'primary';
+let passphrase = null;
+let rate = null;
+let broadcast = false;
+let rpcPort = 14037;
+let walletPort = 14039;
+
+while (argv.length) {
+  const arg = argv.shift();
+  const next = argv.shift();
+
+  switch (arg) {
+    case '--wallet': {
+      wallet = next;
+      break;
+    }
+    case '--passphrase': {
+      passphrase = next;
+      break;
+    }
+    case '--network': {
+      network = next;
+      break;
+    }
+    case '--broadcast': {
+      broadcast = next;
+      break;
+    }
+    default:
+      throw new Error(`Unrecognizd option: ${arg}\n${HELP}`);
+  }
+}
+
+switch (network) {
+  case 'main':
+    rpcPort = 12037;
+    walletPort = 12039;
+    break;
+  case 'regtest':
+    rpcPort = 14037;
+    walletPort = 14039;
+    break;
+  default:
+    throw new Error(`Unrecognized network: ${network}`);
+}
+
+const wclient = new WalletClient({
+  port: walletPort
+});
+
+const nclient = new NodeClient({
+  port: rpcPort
+});
+
+if (verb === 'renew') {
+  const renewer = new Renewer({name, network, nclient, wclient});
+  const funder = new Funder({network, nclient, wclient});
+  (async() => {
+    const mtx = await renewer.getMTX();
+    const tx = await funder.fund(mtx);
+    console.log(tx.getJSON(network, mtx.view));
+    if (broadcast) {
+      await nclient.broadcast(tx.toHex());
+    }
+  })().catch((err) => {
+    console.error(err.stack);
+    process.exit(1);
+  });
+}
+
